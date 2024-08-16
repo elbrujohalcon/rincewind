@@ -2,7 +2,7 @@
 
 Wizarding Guide for your Erlang and Elixir Projects
 
-![https://pbs.twimg.com/media/GFz7ev9WcAA-K5W]
+![rincewind.jpeg]
 _(image by [DarkGosp](https://x.com/Darkgosp))_
 
 ## Concept and Scope
