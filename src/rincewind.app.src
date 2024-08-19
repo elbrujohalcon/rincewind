@@ -1,0 +1,12 @@
+{application,
+ rincewind,
+ [{description, "A Wizard Builder"},
+  {vsn, git},
+  {id, "rincewind"},
+  {registered, []},
+  {modules, []},
+  {applications, [kernel, stdlib]},
+  {mod, {rincewind, #{}}},
+  {env, []},
+  {licenses, ["Apache2"]},
+  {build_tools, ["rebar3"]}]}.
