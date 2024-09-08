@@ -5,10 +5,7 @@
 -type name() :: atom().
 -type definition() :: #{name := name(), phases := [rincewind_phase:definition(), ...]}.
 
--opaque t() ::
-    #{name := name(),
-      pid := pid(),
-      phases := [rincewind_phase:t(), ...]}.
+-opaque t() :: #{name := name(), phases := [rincewind_phase:t(), ...]}.
 
 -export_type([name/0, t/0, definition/0]).
 
@@ -37,8 +34,17 @@ kill(WizardName) ->
 definition(WizardName) ->
     gen_server:call(WizardName, definition).
 
-init(Definition) ->
-    {ok, Definition}.
+init(#{name := Name, phases := PhaseDefinitions} = Definition) ->
+    try lists:map(fun rincewind_phase:new/1, PhaseDefinitions) of
+        Phases ->
+            {ok,
+             #{name => Name,
+               phases => Phases,
+               definition => Definition}}
+    catch
+        error:Error ->
+            {stop, Error}
+    end.
 
 handle_call(definition, _From, Wizard) ->
     {reply, Wizard, Wizard}.

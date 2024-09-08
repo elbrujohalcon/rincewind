@@ -19,7 +19,9 @@ start_wizard(Definition) ->
         {ok, _Pid} ->
             ok;
         {error, {already_started, _}} ->
-            {error, already_exists}
+            {error, already_exists};
+        {error, Reason} ->
+            {error, Reason}
     end.
 
 -spec init(map()) -> {ok, {supervisor:sup_flags(), [supervisor:child_spec()]}}.
