@@ -43,7 +43,7 @@ Once you have a user that wants to go through a wizard, you can manage their pro
 
 ```erlang
 %% Kick off the wizard process and get a reference for it
-{ok, WizardProcess} = rincewind:start(WizardName, UserName),
+{ok, WizardProcess} = rincewind:start_runner(WizardName, UserName),
 %% Get the fields and options for the current phase
 {ok, #{phase := FirstPhaseName, fields := […]}} = rincewind:current_phase(WizardProcess),
 %% Receive input from the user for the current phase (it returns the definition for the next phase, if there is one)
