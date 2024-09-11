@@ -19,6 +19,7 @@
 -callback init(init_arg() | undefined) -> {ok, callback_state()} | {error, reason()}.
 
 -export([new/1]).
+-export([name/1]).
 
 -spec new(definition()) -> t().
 new(#{name := Name, callback_module := CallbackModule} = Definition) ->
@@ -31,3 +32,7 @@ new(#{name := Name, callback_module := CallbackModule} = Definition) ->
         {error, Reason} ->
             erlang:error({invalid_phase, #{definition => Definition, error => Reason}})
     end.
+
+-spec name(t()) -> name().
+name(#{name := Name}) ->
+    Name.
