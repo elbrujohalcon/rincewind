@@ -4,10 +4,11 @@
 
 -export([all/0, init_per_suite/1, init_per_testcase/2, end_per_testcase/2,
          end_per_suite/1]).
--export([invalid_wizard/1, start_stop/1, first_phase/1, complete_coverage/1]).
+-export([invalid_wizard/1, start_stop/1, first_phase/1, submit_values/1,
+         complete_coverage/1]).
 
 all() ->
-    [invalid_wizard, start_stop, first_phase, complete_coverage].
+    [invalid_wizard, start_stop, first_phase, submit_values, complete_coverage].
 
 init_per_suite(Config) ->
     {ok, _} = application:ensure_all_started(rincewind),
@@ -70,6 +71,26 @@ first_phase(_) ->
     FirstPhase = rincewind:current_phase(WizardProcess),
     first_phase = rincewind_phase:name(FirstPhase),
     ok.
+
+submit_values(_) ->
+    {ok, WizardProcess} = rincewind:start_runner(submit_values, user_id),
+    FirstPhase = rincewind:current_phase(WizardProcess),
+    first_phase = rincewind_phase:name(FirstPhase),
+    %% Check test_phase implemenation of rincewind_phase callbacks to understand these results
+    {invalid, #{expected := <<"First">>, got := <<"Second">>}} =
+        rincewind:submit(WizardProcess, <<"Second">>),
+    {next_phase, SecondPhase} = rincewind:submit(WizardProcess, <<"First">>),
+    SecondPhase = rincewind:current_phase(WizardProcess),
+    second_phase = rincewind_phase:name(SecondPhase),
+    {next_phase, ThirdPhase} = rincewind:submit(WizardProcess, <<"Second">>),
+    third_phase = rincewind_phase:name(ThirdPhase),
+    {done,
+     [#{phase := FirstPhase, values := <<"First">>},
+      #{phase := SecondPhase, values := <<"Second">>},
+      #{phase := ThirdPhase, values := <<"Third">>}]} =
+        rincewind:submit(WizardProcess, <<"Third">>),
+    {error, done} = rincewind:submit(WizardProcess, <<"Fourth">>),
+    done = rincewind:current_phase(WizardProcess).
 
 complete_coverage(_) ->
     {ok, WizardProcess1} = rincewind:start_runner(complete_coverage, user_id),
