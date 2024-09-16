@@ -64,8 +64,8 @@ the wizard definition):
 #{name := WizardName, phases := […]} = rincewind:wizard(WizardProcess),
 %% Skip the current phase
 {next_phase, #{phase := SecondPhaseName, …}} = rincewind:skip_phase(WizardProcess),
-%% Move back to a previous phase
-{next_phase, #{phase := FirstPhaseName, …}} = rincewind:jump_back(WizardProcess, FirstPhaseName),
+%% Move back to the previous phase
+{next_phase, #{phase := FirstPhaseName, …}} = rincewind:jump_back(WizardProcess),
 %% Get the current values of the wizard (i.e., the values chosen _so far_)
 [#{phase := FirstPhaseName, values := FirstPhaseValue, …}] = rincewind:current_values(WizardProcess),
 ```

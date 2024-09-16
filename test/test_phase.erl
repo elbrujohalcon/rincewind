@@ -16,7 +16,11 @@ init(bad_init_arg) ->
 
 -spec validate(binary(), #{title := binary()}) ->
                   valid | {invalid, #{expected := binary(), got := binary()}}.
-validate(Value, #{title := Value}) ->
-    valid;
 validate(Value, #{title := Title}) ->
-    {invalid, #{expected => Title, got => Value}}.
+    Len = size(Title),
+    case Value of
+        <<Title:Len/binary, _/binary>> ->
+            valid;
+        _ ->
+            {invalid, #{expected => Title, got => Value}}
+    end.

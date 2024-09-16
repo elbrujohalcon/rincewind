@@ -18,7 +18,7 @@
 
 -export([start_link/2, stop/1]).
 -export([init/1, handle_call/3, handle_cast/2]).
--export([current_phase/1, current_values/1, submit/2, skip_phase/1]).
+-export([current_phase/1, current_values/1, submit/2, skip_phase/1, jump_back/1]).
 
 -spec start_link(rincewind_wizard:t(), name()) ->
                     {ok, ref()} | {error, rincewind_runner_sup:creation_error()}.
@@ -52,6 +52,10 @@ submit(RunnerRef, Values) ->
                     {error, done} | {next_phase, rincewind_phase:t()} | {done, [result(), ...]}.
 skip_phase(RunnerRef) ->
     gen_server:call(RunnerRef, skip_phase).
+
+-spec jump_back(ref()) -> {error, no_previous_phase} | {next_phase, rincewind_phase:t()}.
+jump_back(RunnerRef) ->
+    gen_server:call(RunnerRef, jump_back).
 
 -spec stop(ref()) -> ok.
 stop(RunnerPid) ->
@@ -91,6 +95,20 @@ handle_call(skip_phase,
              {next_phase, lists:nth(CurrentPhaseNumber + 1, WizardPhases)},
              Runner#{phase_number := CurrentPhaseNumber + 1}}
     end;
+handle_call(jump_back, _From, #{phase_number := 1} = Runner) ->
+    {reply, {error, no_previous_phase}, Runner};
+handle_call(jump_back, _From, #{phase_number := done, wizard := Wizard} = Runner) ->
+    WizardPhases = rincewind_wizard:phases(Wizard),
+    {reply,
+     {next_phase, lists:last(WizardPhases)},
+     Runner#{phase_number := length(WizardPhases)}};
+handle_call(jump_back,
+            _From,
+            #{phase_number := CurrentPhaseNumber, wizard := Wizard} = Runner) ->
+    NextPhaseNumber = CurrentPhaseNumber - 1,
+    {reply,
+     {next_phase, lists:nth(NextPhaseNumber, rincewind_wizard:phases(Wizard))},
+     Runner#{phase_number := NextPhaseNumber}};
 handle_call({submit, _}, _From, #{phase_number := done} = Runner) ->
     {reply, {error, done}, Runner};
 handle_call({submit, SelectedValues},

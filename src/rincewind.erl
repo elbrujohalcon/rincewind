@@ -5,7 +5,7 @@
 -export([start/2, stop/1]).
 -export([create_wizard/1, kill_wizard/1, wizard/1]).
 -export([start_runner/2, current_phase/1, current_values/1, submit/2, skip_phase/1,
-         stop_runner/1]).
+         jump_back/1, stop_runner/1]).
 
 %% @private
 -spec start(application:start_type(), map()) -> {ok, pid()}.
@@ -52,13 +52,20 @@ submit(RunnerRef, Values) ->
     rincewind_runner:submit(RunnerRef, Values).
 
 %% @todo Consider if there are phases that can't be skipped
-%%       unless they already have selected values)
+%%       (Maybe unless they already have selected values)
 -spec skip_phase(rincewind_runner:ref()) ->
                     {error, done} |
                     {next_phase, rincewind_phase:t()} |
                     {done, [rincewind_runner:result(), ...]}.
 skip_phase(RunnerRef) ->
     rincewind_runner:skip_phase(RunnerRef).
+
+%% @todo Consider if there are phases that can't jump back
+%% @todo Consider jumping back and forth as many steps as desired
+-spec jump_back(rincewind_runner:ref()) ->
+                   {error, no_previous_phase} | {next_phase, rincewind_phase:t()}.
+jump_back(RunnerRef) ->
+    rincewind_runner:jump_back(RunnerRef).
 
 -spec stop_runner(rincewind_runner:ref()) -> ok.
 stop_runner(RunnerRef) ->

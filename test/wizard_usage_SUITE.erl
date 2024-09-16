@@ -5,10 +5,16 @@
 -export([all/0, init_per_suite/1, init_per_testcase/2, end_per_testcase/2,
          end_per_suite/1]).
 -export([invalid_wizard/1, start_stop/1, first_phase/1, submit_values/1, skip_phase/1,
-         complete_coverage/1]).
+         jump_back/1, complete_coverage/1]).
 
 all() ->
-    [invalid_wizard, start_stop, first_phase, submit_values, skip_phase, complete_coverage].
+    [invalid_wizard,
+     start_stop,
+     first_phase,
+     submit_values,
+     skip_phase,
+     jump_back,
+     complete_coverage].
 
 init_per_suite(Config) ->
     {ok, _} = application:ensure_all_started(rincewind),
@@ -94,11 +100,10 @@ submit_values(_) ->
 
 skip_phase(_) ->
     {ok, WizardProcess} = rincewind:start_runner(skip_phase, user_id),
-    [#{phase := FirstPhase} = FirstResult,
+    [#{phase := _} = FirstResult,
      #{phase := SecondPhase} = SecondResult,
      #{phase := ThirdPhase} = ThirdResult] =
         rincewind:current_values(WizardProcess),
-    first_phase = rincewind_phase:name(FirstPhase),
     false = maps:is_key(values, FirstResult),
     false = maps:is_key(values, SecondResult),
     false = maps:is_key(values, ThirdResult),
@@ -117,6 +122,49 @@ skip_phase(_) ->
         rincewind:skip_phase(WizardProcess),
     {error, done} = rincewind:skip_phase(WizardProcess),
     done = rincewind:current_phase(WizardProcess).
+
+jump_back(_) ->
+    {ok, WizardProcess} = rincewind:start_runner(jump_back, user_id),
+    [#{phase := FirstPhase}, #{phase := SecondPhase}, #{phase := ThirdPhase}] =
+        AllEmpty = rincewind:current_values(WizardProcess),
+    [] = [Result || Result <- AllEmpty, maps:is_key(values, Result)],
+
+    {next_phase, SecondPhase} = rincewind:skip_phase(WizardProcess),
+    AllEmpty = rincewind:current_values(WizardProcess),
+
+    {next_phase, FirstPhase} = rincewind:jump_back(WizardProcess),
+    AllEmpty = rincewind:current_values(WizardProcess),
+
+    {error, no_previous_phase} = rincewind:jump_back(WizardProcess),
+    {next_phase, SecondPhase} = rincewind:submit(WizardProcess, <<"First">>),
+    [#{phase := FirstPhase, values := <<"First">>} = FirstFull, SecondEmpty, ThirdEmpty] =
+        rincewind:current_values(WizardProcess),
+    false = maps:is_key(values, SecondEmpty),
+    false = maps:is_key(values, ThirdEmpty),
+
+    {next_phase, ThirdPhase} = rincewind:submit(WizardProcess, <<"Second !">>),
+    [FirstFull, #{phase := SecondPhase, values := <<"Second !">>}, ThirdEmpty] =
+        rincewind:current_values(WizardProcess),
+
+    %% Previously selected values are not lost when jumping back
+    {next_phase, SecondPhase} = rincewind:jump_back(WizardProcess),
+    [FirstFull, #{phase := SecondPhase, values := <<"Second !">>} = SecondFull, ThirdEmpty] =
+        rincewind:current_values(WizardProcess),
+
+    %% They can be replaced, tho
+    {next_phase, FirstPhase} = rincewind:jump_back(WizardProcess),
+    {next_phase, SecondPhase} = rincewind:submit(WizardProcess, <<"First, too">>),
+    [#{phase := FirstPhase, values := <<"First, too">>}, SecondFull, ThirdEmpty] =
+        FinalResult = rincewind:current_values(WizardProcess),
+
+    %% And they're preserved even when skipping the phase
+    {next_phase, ThirdPhase} = rincewind:skip_phase(WizardProcess),
+    FinalResult = rincewind:current_values(WizardProcess),
+
+    {done, FinalResult} = rincewind:skip_phase(WizardProcess),
+    {next_phase, ThirdPhase} = rincewind:jump_back(WizardProcess),
+    FinalResult = rincewind:current_values(WizardProcess),
+    ok.
 
 complete_coverage(_) ->
     {ok, WizardProcess1} = rincewind:start_runner(complete_coverage, user_id),
