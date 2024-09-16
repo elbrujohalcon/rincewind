@@ -4,11 +4,11 @@
 
 -export([all/0, init_per_suite/1, init_per_testcase/2, end_per_testcase/2,
          end_per_suite/1]).
--export([invalid_wizard/1, start_stop/1, first_phase/1, submit_values/1,
+-export([invalid_wizard/1, start_stop/1, first_phase/1, submit_values/1, skip_phase/1,
          complete_coverage/1]).
 
 all() ->
-    [invalid_wizard, start_stop, first_phase, submit_values, complete_coverage].
+    [invalid_wizard, start_stop, first_phase, submit_values, skip_phase, complete_coverage].
 
 init_per_suite(Config) ->
     {ok, _} = application:ensure_all_started(rincewind),
@@ -90,6 +90,32 @@ submit_values(_) ->
       #{phase := ThirdPhase, values := <<"Third">>}]} =
         rincewind:submit(WizardProcess, <<"Third">>),
     {error, done} = rincewind:submit(WizardProcess, <<"Fourth">>),
+    done = rincewind:current_phase(WizardProcess).
+
+skip_phase(_) ->
+    {ok, WizardProcess} = rincewind:start_runner(skip_phase, user_id),
+    [#{phase := FirstPhase} = FirstResult,
+     #{phase := SecondPhase} = SecondResult,
+     #{phase := ThirdPhase} = ThirdResult] =
+        rincewind:current_values(WizardProcess),
+    first_phase = rincewind_phase:name(FirstPhase),
+    false = maps:is_key(values, FirstResult),
+    false = maps:is_key(values, SecondResult),
+    false = maps:is_key(values, ThirdResult),
+
+    {next_phase, SecondPhase} = rincewind:skip_phase(WizardProcess),
+    [FirstResult, SecondResult, ThirdResult] = rincewind:current_values(WizardProcess),
+
+    SecondPhase = rincewind:current_phase(WizardProcess),
+    {next_phase, ThirdPhase} = rincewind:submit(WizardProcess, <<"Second">>),
+    [FirstResult,
+     #{phase := SecondPhase, values := <<"Second">>} = SecondResultWithValues,
+     ThirdResult] =
+        rincewind:current_values(WizardProcess),
+
+    {done, [FirstResult, SecondResultWithValues, ThirdResult]} =
+        rincewind:skip_phase(WizardProcess),
+    {error, done} = rincewind:skip_phase(WizardProcess),
     done = rincewind:current_phase(WizardProcess).
 
 complete_coverage(_) ->

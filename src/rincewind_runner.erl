@@ -6,7 +6,7 @@
 
 -opaque ref() :: pid().
 
--type result() :: #{phase := rincewind_phase:t(), values := rincewind_phase:values()}.
+-type result() :: #{phase := rincewind_phase:t(), values => rincewind_phase:values()}.
 
 -opaque t() ::
     #{name := name(),
@@ -18,7 +18,7 @@
 
 -export([start_link/2, stop/1]).
 -export([init/1, handle_call/3, handle_cast/2]).
--export([current_phase/1, submit/2]).
+-export([current_phase/1, current_values/1, submit/2, skip_phase/1]).
 
 -spec start_link(rincewind_wizard:t(), name()) ->
                     {ok, ref()} | {error, rincewind_runner_sup:creation_error()}.
@@ -36,6 +36,10 @@ start_link(Wizard, RunnerName) ->
 current_phase(RunnerPid) ->
     gen_server:call(RunnerPid, current_phase).
 
+-spec current_values(ref()) -> [result(), ...].
+current_values(RunnerRef) ->
+    gen_server:call(RunnerRef, current_values).
+
 -spec submit(ref(), rincewind_phase:values()) ->
                 {invalid, rincewind_phase:validation_error()} |
                 {error, done} |
@@ -43,6 +47,11 @@ current_phase(RunnerPid) ->
                 {done, [result(), ...]}.
 submit(RunnerRef, Values) ->
     gen_server:call(RunnerRef, {submit, Values}).
+
+-spec skip_phase(ref()) ->
+                    {error, done} | {next_phase, rincewind_phase:t()} | {done, [result(), ...]}.
+skip_phase(RunnerRef) ->
+    gen_server:call(RunnerRef, skip_phase).
 
 -spec stop(ref()) -> ok.
 stop(RunnerPid) ->
@@ -61,6 +70,27 @@ handle_call(current_phase,
             _From,
             #{phase_number := CurrentPhase, wizard := Wizard} = Runner) ->
     {reply, lists:nth(CurrentPhase, rincewind_wizard:phases(Wizard)), Runner};
+handle_call(current_values, _From, #{wizard := Wizard, values := Values} = Runner) ->
+    Result = lists:zipwith(fun build_result/2, rincewind_wizard:phases(Wizard), Values),
+    {reply, Result, Runner};
+handle_call(skip_phase, _From, #{phase_number := done} = Runner) ->
+    {reply, {error, done}, Runner};
+handle_call(skip_phase,
+            _From,
+            #{phase_number := CurrentPhaseNumber,
+              values := Values,
+              wizard := Wizard} =
+                Runner) ->
+    case rincewind_wizard:phases(Wizard) of
+        WizardPhases
+            when length(WizardPhases) == CurrentPhaseNumber -> %% this was the last one
+            Result = lists:zipwith(fun build_result/2, rincewind_wizard:phases(Wizard), Values),
+            {reply, {done, Result}, Runner#{phase_number := done}};
+        WizardPhases ->
+            {reply,
+             {next_phase, lists:nth(CurrentPhaseNumber + 1, WizardPhases)},
+             Runner#{phase_number := CurrentPhaseNumber + 1}}
+    end;
 handle_call({submit, _}, _From, #{phase_number := done} = Runner) ->
     {reply, {error, done}, Runner};
 handle_call({submit, SelectedValues},

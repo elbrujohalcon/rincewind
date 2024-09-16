@@ -61,13 +61,13 @@ the wizard definition):
 
 ```erlang
 %% Get the full wizard definition (it can be used to navigate through the phases)
-#{name := WizardName, phases := […]} = rincewind:wizard_definition(WizardProcess),
+#{name := WizardName, phases := […]} = rincewind:wizard(WizardProcess),
 %% Skip the current phase
 {next_phase, #{phase := SecondPhaseName, …}} = rincewind:skip_phase(WizardProcess),
 %% Move back to a previous phase
 {next_phase, #{phase := FirstPhaseName, …}} = rincewind:jump_back(WizardProcess, FirstPhaseName),
 %% Get the current values of the wizard (i.e., the values chosen _so far_)
-[#{phase := FirstPhaseName, values := FirstPhaseValue, …}] = rincewind:get_values(WizardProcess),
+[#{phase := FirstPhaseName, values := FirstPhaseValue, …}] = rincewind:current_values(WizardProcess),
 ```
 
 [//]: # (TODO: Add more functions if we think we need them)
