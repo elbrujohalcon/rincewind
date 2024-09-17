@@ -43,18 +43,17 @@ Once you have a user that wants to go through a wizard, you can manage their pro
 
 ```erlang
 %% Kick off the wizard process and get a reference for it
-{ok, WizardProcess} = rincewind:start(WizardName, UserName),
-%% Get the fields and options for the current phase
-{ok, #{phase := FirstPhaseName, fields := […]}} = rincewind:current_phase(WizardProcess),
+{ok, WizardProcess} = rincewind:start_runner(WizardName, UserName),
+%% Get the options for the current phase
+%% Other than the name, the options for the current phase are up to the callback module that implements rincewind_phase
+{ok, #{name := FirstPhaseName, …}} = rincewind:current_phase(WizardProcess),
 %% Receive input from the user for the current phase (it returns the definition for the next phase, if there is one)
-{next_phase, #{phase := SecondPhaseName, fields := […]}} =
-    rincewind:submit(WizardProcess, #{phase => FirstPhaseName, field_values => […]}),
+%% The expected values depend on each phase's implementation
+{next_phase, #{name := SecondPhaseName, …}} = rincewind:submit(WizardProcess, Values),
 %% If the submitted values are deemed invalid, the corresponding validation errors are returned
-{invalid, #{phase := SecondPhaseName, field_errors := […]}} =
-    rincewind:submit(WizardProcess, #{phase => SecondPhaseName, field_values => […]}),
-%% If there are no further phases, the final result is returned
-{done, #{overall_result := OverallResult, phase_results := [#{phase := FirstPhaseName, value := FirstPhaseValue}, …]}} =
-    rincewind:submit(WizardProcess, #{phase => SecondPhaseName, field_values => […]}),
+{invalid, #{errors := …}} = rincewind:submit(WizardProcess, Values),
+%% If there are no further phases, the final values chosen for each phase are returned
+{done, [#{phase := FirstPhaseName, values := FirstPhaseValues}, …]} = rincewind:submit(WizardProcess, Values),
 ```
 
 While that's the happy path, Rincewind also provides the means for the user to jump through phases (if that's allowed by
@@ -62,19 +61,17 @@ the wizard definition):
 
 ```erlang
 %% Get the full wizard definition (it can be used to navigate through the phases)
-#{name := WizardName, phases := […]} = rincewind:wizard_definition(WizardProcess),
+#{name := WizardName, phases := […]} = rincewind:wizard(WizardProcess),
 %% Skip the current phase
-{next_phase, #{phase := SecondPhaseName, fields := […]}} = rincewind:skip_phase(WizardProcess),
-%% Move back to a previous phase
-{next_phase, #{phase := FirstPhaseName, fields := […]}} = rincewind:jump_back(WizardProcess, FirstPhaseName),
-%% Get the current state of the wizard (i.e., the results _so far_)
-{ok, #{phase_results := [#{phase := FirstPhaseName, value := FirstPhaseValue}, …]}} = rincewind:get_state(WizardProcess),
+{next_phase, #{phase := SecondPhaseName, …}} = rincewind:skip_phase(WizardProcess),
+%% Move back to the previous phase
+{next_phase, #{phase := FirstPhaseName, …}} = rincewind:jump_back(WizardProcess),
+%% Get the current values of the wizard (i.e., the values chosen _so far_)
+[#{phase := FirstPhaseName, values := FirstPhaseValue, …}] = rincewind:current_values(WizardProcess),
 ```
 
 [//]: # (TODO: Add more functions if we think we need them)
 
 [//]: # (TODO: If we add a folder with examples, link it here)
-
-## Implementation
 
 [//]: # (TODO: Add implementation details that can be useful for our users, like the fact that each process is an FSM or something)

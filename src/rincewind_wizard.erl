@@ -18,7 +18,7 @@
 name(#{name := Name}) ->
     Name.
 
--spec phases(t()) -> [rincewind_phase:t()].
+-spec phases(t()) -> [rincewind_phase:t(), ...].
 phases(#{phases := Phases}) ->
     Phases.
 
